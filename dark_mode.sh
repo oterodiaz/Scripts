@@ -63,7 +63,7 @@ set_theme() {
     gsettings set org.gnome.desktop.interface color-scheme "$COLOR_SCHEME"
     alacritty_config.sh -t "$ALACRITTY_THEME" &
     if command -v nvim > /dev/null 2>&1; then
-        "$SCRIPTS/python/update_neovim_theme.py" &
+        "$SCRIPTS/update_neovim_theme.py" &
     fi
     if [ -f "$HOME/.config/bat/config" ]; then
         sed -i "s/--theme .*/--theme '$BAT_THEME'/" "$HOME/.config/bat/config" &
