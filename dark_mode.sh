@@ -12,13 +12,14 @@ usage() {
     eprintf -- '-d\tSwitch to dark mode\n'
     eprintf -- '-l\tSwitch to light mode\n'
     eprintf -- '-t\tToggle between dark and light mode\n'
+    eprintf -- "-u\tUpdate the theme in applications that don't do so automatically (vim, fish, etc.)\n"
 }
 
 if [ "$#" -eq 0 ]; then
     GET=1
 fi
 
-while getopts ':hgdlt' OPTION; do
+while getopts ':hgdltu' OPTION; do
     case "$OPTION" in
         h)
             usage 2>&1
@@ -36,6 +37,9 @@ while getopts ':hgdlt' OPTION; do
         t)
             TOGGLE=1
             ;;
+        u)
+            UPDATE=1
+            ;;
         *)
             usage
             exit 1
@@ -50,47 +54,52 @@ if [ "$#" -ne 0 ]; then
 fi
 
 get_status() {
-    STATUS="$(dbus-send --session --dest=org.freedesktop.portal.Desktop --print-reply /org/freedesktop/portal/desktop org.freedesktop.portal.Settings.Read string:'org.freedesktop.appearance' string:'color-scheme' | grep -o 'uint32 .' | cut -d' ' -f2)"
-    
-    if [ "$STATUS" = 1 ]; then
-        printf '0'
-    else
-        printf '1'
-    fi
+    defaults read -g AppleInterfaceStyle > /dev/null 2>&1
 }
 
-set_theme() {
-    gsettings set org.gnome.desktop.interface color-scheme "$COLOR_SCHEME"
-    alacritty_config.sh -t "$ALACRITTY_THEME" &
+update_theme() {
     if command -v nvim > /dev/null 2>&1; then
         "$SCRIPTS/update_neovim_theme.py" &
     fi
     if [ -f "$HOME/.config/bat/config" ]; then
-        sed -i "s/--theme .*/--theme '$BAT_THEME'/" "$HOME/.config/bat/config" &
+        gsed -i "s/--theme .*/--theme '$BAT_THEME'/" "$HOME/.config/bat/config" &
     fi
     if command -v fish > /dev/null 2>&1; then
         fish -c "colorscheme '$FISH_THEME'" &
     fi
+    # if pgrep 'Emacs' > /dev/null 2>&1; then
+    #     emacsclient --no-wait --eval "(load-theme (get-correct-theme))"
+    # fi
+} > /dev/null 2>&1
+
+set_theme() {
+    osascript -e 'tell app "System Events" to tell appearance preferences to set dark mode to '"$DARK_MODE"''
+    update_theme
 } > /dev/null 2>&1
 
 light_config() {
-    COLOR_SCHEME='default'
-    ALACRITTY_THEME='iceberg'
+    DARK_MODE='false'
     BAT_THEME='OneHalfLight'
     FISH_THEME='Tomorrow Day'
 }
 
 dark_config() {
-    COLOR_SCHEME='prefer-dark'
-    ALACRITTY_THEME='dark'
+    DARK_MODE='true'
     BAT_THEME='OneHalfDark'
     FISH_THEME='Tomorrow Night'
 }
 
 if [ -n "${GET+x}" ]; then
-    exit "$(get_status)"
+    get_status
+elif [ -n "${UPDATE+x}" ]; then
+    if get_status; then
+        dark_config
+    else
+        light_config
+    fi
+    update_theme
 elif [ -n "${TOGGLE+x}" ]; then
-    if [ "$(get_status)" = 0 ]; then
+    if get_status; then
         light_config
     else
         dark_config
