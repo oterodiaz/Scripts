@@ -50,13 +50,7 @@ if [ "$#" -ne 0 ]; then
 fi
 
 get_status() {
-    STATUS="$(dbus-send --session --dest=org.freedesktop.portal.Desktop --print-reply /org/freedesktop/portal/desktop org.freedesktop.portal.Settings.Read string:'org.freedesktop.appearance' string:'color-scheme' | grep -o 'uint32 .' | cut -d' ' -f2)"
-    
-    if [ "$STATUS" = 1 ]; then
-        printf '0'
-    else
-        printf '1'
-    fi
+    dbus-send --session --dest=org.freedesktop.portal.Desktop --print-reply /org/freedesktop/portal/desktop org.freedesktop.portal.Settings.Read string:'org.freedesktop.appearance' string:'color-scheme' | grep -o 'uint32 1'
 }
 
 set_theme() {
@@ -88,7 +82,7 @@ dark_config() {
 }
 
 if [ -n "${GET+x}" ]; then
-    exit "$(get_status)"
+    get_status
 elif [ -n "${TOGGLE+x}" ]; then
     if [ "$(get_status)" = 0 ]; then
         light_config
